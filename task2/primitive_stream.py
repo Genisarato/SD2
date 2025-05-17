@@ -7,15 +7,18 @@ import csv
 
 logging.basicConfig(level=logging.INFO, format='%(threadName)s %(message)s')
 
+#Funció d'exemple
 def print_message(message):
 	print(f"El missatge es: {message}")
 
+#Funció "lambda"/worker
 def worker(function, queue_name, stop_event):
     connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
     channel = connection.channel()
     channel.queue_declare(queue=queue_name, durable=True)
     channel.basic_qos(prefetch_count=1)
 
+    #S'executa normal com un consumer de RabbitMQ mentre no se li indica el stop_event
     def callback(ch, method, properties, body):
         if stop_event.is_set():
             ch.basic_nack(method.delivery_tag, requeue=True)
@@ -41,6 +44,7 @@ def worker(function, queue_name, stop_event):
         pass
     logging.info("Worker aturat")
 
+#Funció per obtenir els missatges de la cua i poder llençar els workers segons
 def get_queue_message_count(queue_name):
     connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
     channel = connection.channel()
@@ -49,6 +53,7 @@ def get_queue_message_count(queue_name):
     connection.close()
     return message_count
 
+ #Manegador principal dels threads
 def primitive_stream(function, max_workers, queue_name):
     workers = []
     stop_events = []
@@ -82,6 +87,7 @@ def primitive_stream(function, max_workers, queue_name):
             stats_log.append( (datetime.now(), len(workers)) )
             time.sleep(1)
 
+    #Acabem el procés en background
     except KeyboardInterrupt:
         logging.info("Aturant tot...")
 
